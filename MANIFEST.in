@@ -1,0 +1,3 @@
+graft sr_tracker/templates
+graft sr_tracker/static
+include sr_tracker/schema.sql
