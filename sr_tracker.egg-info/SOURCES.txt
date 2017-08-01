@@ -1,0 +1,15 @@
+MANIFEST.in
+README.txt
+setup.cfg
+sr_tracker/__init__.py
+sr_tracker/schema.sql
+sr_tracker/server.py
+sr_tracker.egg-info/PKG-INFO
+sr_tracker.egg-info/SOURCES.txt
+sr_tracker.egg-info/dependency_links.txt
+sr_tracker.egg-info/requires.txt
+sr_tracker.egg-info/top_level.txt
+sr_tracker/static/style.css
+sr_tracker/templates/layout.html
+sr_tracker/templates/login.html
+sr_tracker/templates/show_entries.html

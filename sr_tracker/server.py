@@ -1,24 +1,21 @@
 # -*- coding: utf-8 -*-
-#!C://python//python.exe
+# !C://python//python.exe
 
 from flask import Flask, url_for, request, session, g, redirect, url_for, abort, \
-     render_template, flash
+    render_template, flash, Markup
 from flask_restful import Resource, Api
 from sqlalchemy import create_engine
 from json import dumps
 from sqlite3 import dbapi2 as sqlite3
-import flask_jsonpify, sqlite3, os
-
+import flask_jsonpify, sqlite3, os, datetime
 
 # Connect to DB
 conn = sqlite3.connect('sr_tracker.db')
 db_connect = create_engine('sqlite:///sr_tracker.db')
 
-
 # Instantiate app object
 app = Flask(__name__)
 api = Api(app)
-
 
 # Load default config and override config from an environment variable
 app.config.update(dict(
@@ -31,9 +28,8 @@ app.config.update(dict(
 app.config.from_envvar('sr_tracker_SETTINGS', silent=True)
 
 ####Debug Printing
-#DEBUG=0
-DEBUG=1
-
+# DEBUG=0
+DEBUG = 1
 
 #########################################################################################
 #	Global Variables								#
@@ -67,21 +63,23 @@ DEBUG=1
 ########****************OLD CODE*******REMOVE ME************************************#####
 
 
-insert_script = "INSERT INTO incidents ( Name, Email, AssetTag, Priority, Status, ErrorType, Description, OS) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?)"
-
+post_string = str('insert into incidents (SR_NUMBER, SITE_NAME, SITE_ID, SEVERITY, ISSUE, SERIAL_NUMBER, CREATE_DATE) \
+                values (?, ?, ?, ?, ?, ?, ?)')
+get_string = str('select ID_NUM, SR_NUMBER, SITE_NAME, SITE_ID, SEVERITY, ISSUE, SERIAL_NUMBER from incidents order \
+                    by SR_NUMBER')
 
 #########################################################################################
 #	MAIN										#
 #########################################################################################
-#Purpose: Starts program
+# Purpose: Starts program
 
 ########****************OLD CODE*******REMOVE ME************************************#####
 # # Print the page
 # if ($loggedIN = "1"){
-     # #print $request->header(-cookie=>[$cookie1,$cookie2]);
-     # set_cookie();
+# #print $request->header(-cookie=>[$cookie1,$cookie2]);
+# set_cookie();
 # }else{
-      # print $request->header;
+# print $request->header;
 # }
 # print $request->start_html("$owner\'s Request System");
 # print $request->h3 ("$owner\'s Request System");
@@ -144,8 +142,10 @@ def close_db(error):
 @app.route('/')
 def show_entries():
     db = get_db()
-    cur = db.execute('select ID_NUM, SR_NUMBER, SITE_NAME, SITE_ID, SEVERITY, ISSUE, SERIAL_NUMBER from incidents order by SR_NUMBER')
+    cur = db.execute(get_string)
     entries = cur.fetchall()
+    if DEBUG == 1:
+        flash(Markup(datetime.datetime.now().strftime("%d/%m/%Y %H:%M")))
     return render_template('show_entries.html', entries=entries)
 
 
@@ -154,8 +154,12 @@ def add_entry():
     if not session.get('logged_in'):
         abort(401)
     db = get_db()
-    db.execute('insert into incidents (ID_NUM, SR_NUMBER, SITE_NAME, SITE_ID, SEVERITY, ISSUE, SERIAL_NUMBER) values (?, ?, ?, ?, ?, ?, ?)',
-               [request.form['title'], request.form['text']])
+    if DEBUG == 1:
+        assert (str(datetime.datetime.now().strftime("%d/%m/%Y %H:%M")))
+        flash(Markup(datetime.datetime.now().strftime("%d/%m/%Y %H:%M")))
+    db.execute(post_string, [request.form['SR Number'], request.form['Site Name'], request.form['Site ID'], \
+                               request.form['Severity'], request.form['Issue'], request.form['Serial Number'], \
+                               str(datetime.datetime.now().strftime("%d/%m/%Y %H:%M")), ])
     db.commit()
     flash('New entry was successfully posted')
     return redirect(url_for('show_entries'))
@@ -182,4 +186,4 @@ def logout():
     flash('You were logged out')
     return redirect(url_for('show_entries'))
 
-###Do we need to disconnect from DB?
+    ###Do we need to disconnect from DB?
