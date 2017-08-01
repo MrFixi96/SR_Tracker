@@ -16,7 +16,11 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'flask',
+        'flask', 
+        'flask_jasonpify',
+        'flask_restful',
+        'sqlalchemy',
+        'sqlite3',
     ],
     setup_requires=[
         'pytest-runner',

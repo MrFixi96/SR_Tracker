@@ -1,11 +1,11 @@
-                         / Flaskr /
+                         / SR Tracker /
 
-                 a minimal blog application
+                 a Dell EMC SAM tool
 
 
-    ~ What is Flaskr?
+    ~ What is SR Tracker?
 
-      A sqlite powered thumble blog application
+      A sqlite/Flask powered SR and RCM activity tracking application
 
     ~ How do I use it?
 
@@ -32,7 +32,7 @@
          flask run
 
          the application will greet you on
-         http://localhost:5000/
+         http://localhost:7000/
 
     ~ Is it tested?
 
