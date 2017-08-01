@@ -11,8 +11,8 @@ import flask_jsonpify, sqlite3, os
 
 
 # Connect to DB
-conn = sqlite3.connect('sreq.db')
-db_connect = create_engine('sqlite:///sreq.db')
+conn = sqlite3.connect('sr_tracker.db')
+db_connect = create_engine('sqlite:///sr_tracker.db')
 
 
 # Instantiate app object
@@ -183,6 +183,3 @@ def logout():
     return redirect(url_for('show_entries'))
 
 ###Do we need to disconnect from DB?
-
-if __name__ == '__main__':
-     app.run(port='7000')

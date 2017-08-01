@@ -1,1 +1,1 @@
-from .sr_tracker import app
+from .server import app
