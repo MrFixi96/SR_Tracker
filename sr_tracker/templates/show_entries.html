@@ -4,24 +4,33 @@
     <form action="{{ url_for('add_entry') }}" method="post" class="add-entry">
       <dl>
         <dt>SR Number:
-        <dd><input type="text" size="30" name="SR Number">
+        <dd><input type="text" size="30" name="SR_Number">
         <dt>Site Name:
-        <dd><input type="text" size="30" name="Site Name">
+        <dd><input type="text" size="30" name="Site_Name">
         <dt>Site ID:
-        <dd><input type="text" size="30" name="Site ID">
+        <dd><input type="text" size="30" name="Site_ID">
         <dt>Severity:
         <dd><input type="text" size="30" name="Severity">
         <dt>Issue:
         <dd><textarea name="Issue" rows="5" cols="40"></textarea>
         <dt>Serial Number:
-        <dd><input type="text" size="30" name="Serial Number">
+        <dd><input type="text" size="30" name="Serial_Number">
         <dd><input type="submit" value="Share">
       </dl>
     </form>
   {% endif %}
-  <ul class="entries">
+  <ul class="entries"><li><table>
   {% for entry in entries %}
-    <li><h2>{{ entry.title }}</h2>{{ entry.text|safe }}</li>
+
+          <tr>
+              <td><h2>{{ entry.SR_Number }}</h2></td>
+              <td>{{ entry.Site_Name }}</td>
+              <td>{{ entry.Site_ID }}</td>
+              <td>{{ entry.Severity }}</td>
+              <td>{{ entry.Issue|safe }}</td>
+              <td>{{ entry.Serial_Number }}</td>
+          </tr>
+   </table></li>
   {% else %}
     <li><em>Unbelievable.  No entries here so far</em></li>
   {% endfor %}

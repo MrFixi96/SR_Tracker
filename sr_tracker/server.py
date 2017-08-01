@@ -28,8 +28,8 @@ app.config.update(dict(
 app.config.from_envvar('sr_tracker_SETTINGS', silent=True)
 
 ####Debug Printing
-# DEBUG=0
-DEBUG = 1
+# DEBUG_PRINT=0
+DEBUG_PRINT = 1
 
 #########################################################################################
 #	Global Variables								#
@@ -144,7 +144,8 @@ def show_entries():
     db = get_db()
     cur = db.execute(get_string)
     entries = cur.fetchall()
-    if DEBUG == 1:
+    if DEBUG_PRINT == 1:
+        assert (str(datetime.datetime.now().strftime("%d/%m/%Y %H:%M")))
         flash(Markup(datetime.datetime.now().strftime("%d/%m/%Y %H:%M")))
     return render_template('show_entries.html', entries=entries)
 
@@ -154,11 +155,11 @@ def add_entry():
     if not session.get('logged_in'):
         abort(401)
     db = get_db()
-    if DEBUG == 1:
+    if DEBUG_PRINT == 1:
         assert (str(datetime.datetime.now().strftime("%d/%m/%Y %H:%M")))
         flash(Markup(datetime.datetime.now().strftime("%d/%m/%Y %H:%M")))
-    db.execute(post_string, [request.form['SR Number'], request.form['Site Name'], request.form['Site ID'], \
-                               request.form['Severity'], request.form['Issue'], request.form['Serial Number'], \
+    db.execute(post_string, [request.form['SR_Number'], request.form['Site_Name'], request.form['Site_ID'], \
+                               request.form['Severity'], request.form['Issue'], request.form['Serial_Number'], \
                                str(datetime.datetime.now().strftime("%d/%m/%Y %H:%M")), ])
     db.commit()
     flash('New entry was successfully posted')
