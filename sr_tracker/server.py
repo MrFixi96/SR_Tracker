@@ -1,21 +1,20 @@
 # -*- coding: utf-8 -*-
 # !C://python//python.exe
 
-from flask import Flask, url_for, request, session, g, redirect, url_for, abort, \
-    render_template, flash, Markup
-from flask_restful import Resource, Api
-from sqlalchemy import create_engine
-from json import dumps
+import datetime
+import os
+import sqlite3
+import tempfile
 from sqlite3 import dbapi2 as sqlite3
-import flask_jsonpify, sqlite3, os, datetime
 
-# Connect to DB
-conn = sqlite3.connect('sr_tracker.db')
-db_connect = create_engine('sqlite:///sr_tracker.db')
+from flask import Flask, url_for, request, session, g, redirect, abort, \
+    render_template, flash, Markup, send_from_directory
+from sqlalchemy import create_engine
+from werkzeug.utils import secure_filename
 
-# Instantiate app object
 app = Flask(__name__)
-api = Api(app)
+# api = Api(app)
+app.debug = True
 
 # Load default config and override config from an environment variable
 app.config.update(dict(
@@ -25,44 +24,25 @@ app.config.update(dict(
     USERNAME='admin',
     PASSWORD='default'
 ))
+
+UPLOAD_FOLDER = tempfile.gettempdir()
+ALLOWED_EXTENSIONS = {'csv'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
 app.config.from_envvar('sr_tracker_SETTINGS', silent=True)
 
+# Connect to DB
+conn = sqlite3.connect('sr_tracker.db')
+db_connect = create_engine('sqlite:///sr_tracker.db')
+
 ####Debug Printing
-# DEBUG_PRINT=0
-DEBUG_PRINT = 1
+DEBUG_PRINT = 0
+# DEBUG_PRINT = 1
 
 #########################################################################################
 #	Global Variables								#
 #########################################################################################
-
-
-########****************OLD CODE*******REMOVE ME************************************#####
-# Get the list of parameters passed by html form
-# my $action = $request->param("action");
-# my $name = $request->param("name");
-# my $assetNumber = $request->param("assetNumber");
-# my $errorType = $request->param("errorType");
-# my $email = $request->param("email");
-# my $description = $request->param("description");
-# my $priorityLevel = $request->param("priorityLevel");
-# my $OS = $request->param("OS");
-# my $record = $request->param("record");
-# my $status= $request->param("status");
-# my $RegID= $request->param("RegID");
-# my $assigned= $request->param("assigned");
-# my $timeStart= $request->param("timeStart");
-# my $timeStop= $request->param("timeStop");
-# my $resolution= $request->param("resolution");
-# my $owner = "IT Services";
-# my $user= $request->param("pass");
-# my $pass= $request->param("pass");
-# my $loginID= $request->param("loginID");
-# my $loggedIN = "0";
-# my $cookie1;
-# my $cookie2;
-########****************OLD CODE*******REMOVE ME************************************#####
-
-
 post_string = str('insert into incidents (SR_NUMBER, SITE_NAME, SITE_ID, SEVERITY, ISSUE, SERIAL_NUMBER, CREATE_DATE) \
                 values (?, ?, ?, ?, ?, ?, ?)')
 get_string = str('select ID_NUM, SR_NUMBER, SITE_NAME, SITE_ID, SEVERITY, ISSUE, SERIAL_NUMBER from incidents order \
@@ -158,8 +138,8 @@ def add_entry():
     if DEBUG_PRINT == 1:
         assert (str(datetime.datetime.now().strftime("%d/%m/%Y %H:%M")))
         flash(Markup(datetime.datetime.now().strftime("%d/%m/%Y %H:%M")))
-    db.execute(post_string, [request.form['SR_Number'], request.form['Site_Name'], request.form['Site_ID'], \
-                               request.form['Severity'], request.form['Issue'], request.form['Serial_Number'], \
+    db.execute(post_string, [request.form['SR_Number'], request.form['Site_Name'], request.form['Site_ID'],
+                             request.form['Severity'], request.form['Issue'], request.form['Serial_Number'],
                                str(datetime.datetime.now().strftime("%d/%m/%Y %H:%M")), ])
     db.commit()
     flash('New entry was successfully posted')
@@ -187,4 +167,43 @@ def logout():
     flash('You were logged out')
     return redirect(url_for('show_entries'))
 
-    ###Do we need to disconnect from DB?
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'],
+                               filename)
+
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload():
+    if request.method == 'POST':
+        # check if the post request has the file part
+        if 'file' not in request.files:
+            flash('No file part')
+            return redirect(request.url)
+        file = request.files['file']
+        # if user does not select file, browser also
+        # submit a empty part without filename
+        if file.filename == '':
+            flash('No selected file')
+            return redirect(request.url)
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            flash(Markup(filename))
+            return redirect(url_for('uploaded_file',
+                                    filename=filename))
+    return '''
+    <!doctype html>
+    <title>Upload new File</title>
+    <h1>Upload new File</h1>
+    <form method=post enctype=multipart/form-data action="{{ url_for('upload') }}">
+      <p><input type=file name=file>
+         <input type=submit value=Upload>
+    </form>
+    '''

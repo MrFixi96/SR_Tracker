@@ -1,6 +1,10 @@
 {% extends "layout.html" %}
 {% block body %}
   {% if session.logged_in %}
+<form method=POST enctype=multipart/form-data action="{{ url_for('upload') }}">
+    <p><input type=file name=file>
+        <input type=submit value=Upload>
+</form>
     <form action="{{ url_for('add_entry') }}" method="post" class="add-entry">
       <dl>
         <dt>SR Number:
@@ -15,21 +19,29 @@
         <dd><textarea name="Issue" rows="5" cols="40"></textarea>
         <dt>Serial Number:
         <dd><input type="text" size="30" name="Serial_Number">
-        <dd><input type="submit" value="Share">
+          <dd><input type="submit" value="Submit">
       </dl>
     </form>
   {% endif %}
   <ul class="entries"><li><table>
+      <tr><b>
+          <td>SR Number</td>
+          <td>Site Name</td>
+          <td>Site ID</td>
+          <td>Severity</td>
+          <td>Issue</td>
+          <td>Serial Number</td>
+      </b></tr>
   {% for entry in entries %}
 
-          <tr>
-              <td><h2>{{ entry.SR_Number }}</h2></td>
-              <td>{{ entry.Site_Name }}</td>
-              <td>{{ entry.Site_ID }}</td>
-              <td>{{ entry.Severity }}</td>
-              <td>{{ entry.Issue|safe }}</td>
-              <td>{{ entry.Serial_Number }}</td>
-          </tr>
+      <tr>
+          <td>{{ entry.SR_Number }}</td>
+          <td>{{ entry.Site_Name }}</td>
+          <td>{{ entry.Site_ID }}</td>
+          <td>{{ entry.Severity }}</td>
+          <td>{{ entry.Issue|safe }}</td>
+          <td>{{ entry.Serial_Number }}</td>
+      </tr>
    </table></li>
   {% else %}
     <li><em>Unbelievable.  No entries here so far</em></li>
