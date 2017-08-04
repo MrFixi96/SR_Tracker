@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 # !C://python//python.exe
 
+import csv
 import datetime
+import json
 import os
 import sqlite3
 import tempfile
 from sqlite3 import dbapi2 as sqlite3
 
 from flask import Flask, url_for, request, session, g, redirect, abort, \
-    render_template, flash, Markup, send_from_directory
+    render_template, flash, Markup, send_from_directory, Response
 from sqlalchemy import create_engine
 from werkzeug.utils import secure_filename
 
@@ -37,8 +39,9 @@ conn = sqlite3.connect('sr_tracker.db')
 db_connect = create_engine('sqlite:///sr_tracker.db')
 
 ####Debug Printing
-DEBUG_PRINT = 0
-# DEBUG_PRINT = 1
+# DEBUG_PRINT = 0
+DEBUG_PRINT = 1
+DEBUG = 1
 
 #########################################################################################
 #	Global Variables								#
@@ -181,29 +184,45 @@ def uploaded_file(filename):
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
+    file = request.files['file']
+    filename = secure_filename(file.filename)
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    csvfile = open(os.path.join(app.config['UPLOAD_FOLDER'], filename), 'r')
+    jsonfile = open(os.path.join(app.config['UPLOAD_FOLDER'], 'file.json'), 'w')
     if request.method == 'POST':
         # check if the post request has the file part
         if 'file' not in request.files:
             flash('No file part')
             return redirect(request.url)
-        file = request.files['file']
-        # if user does not select file, browser also
-        # submit a empty part without filename
-        if file.filename == '':
-            flash('No selected file')
-            return redirect(request.url)
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            flash(Markup(filename))
-            return redirect(url_for('uploaded_file',
-                                    filename=filename))
+        flash(Markup(filename))
+
+        fieldnames = ("Oracle Service Request #", "Site Name: Site Name", "Site Name: Site ID", "Severity",
+                      "Service Request Status", "Date/Time Opened", "Last Modified Date", "Next Customer Contact",
+                      "Product Name", "Product ID", "SW Version (Oracle)", "Problem Summary", "Case Owner: Full Name",
+                      "Contact Name: Full Name", "Site Name: SAM: Full Name")
+        reader = csv.DictReader(csvfile, fieldnames)
+
+        output = []
+
+        def generator():
+            for each in reader:
+                row = {}
+                for field in fieldnames:
+                    row[field] = each[field]
+                output.append(row)
+            yield json.dumps(output)
+
+        return Response(generator(),
+                        mimetype="text/plain",
+                        headers={"Content-Disposition":
+                                     "attachment;filename=file.json"})
+
     return '''
-    <!doctype html>
-    <title>Upload new File</title>
-    <h1>Upload new File</h1>
-    <form method=post enctype=multipart/form-data action="{{ url_for('upload') }}">
-      <p><input type=file name=file>
-         <input type=submit value=Upload>
-    </form>
-    '''
+       <!doctype html>
+       <title>Upload new File</title>
+       <h1>Upload new File</h1>
+       <form method=post enctype=multipart/form-data action="{{ url_for('upload') }}">
+         <p><input type=file name=file>
+            <input type=submit value=Upload>
+       </form>
+       '''

@@ -24,16 +24,19 @@
     </form>
   {% endif %}
   <ul class="entries"><li><table>
-      <tr><b>
-          <td>SR Number</td>
-          <td>Site Name</td>
-          <td>Site ID</td>
-          <td>Severity</td>
-          <td>Issue</td>
-          <td>Serial Number</td>
-      </b></tr>
+      <thead>
+      <tr>
+          <th>SR Number</th>
+          <th>Site Name</th>
+          <th>Site ID</th>
+          <th>Severity</th>
+          <th>Issue</th>
+          <th>Serial Number</th>
+      </tr>
+      </thead>
   {% for entry in entries %}
 
+      <tbody>
       <tr>
           <td>{{ entry.SR_Number }}</td>
           <td>{{ entry.Site_Name }}</td>
@@ -42,6 +45,7 @@
           <td>{{ entry.Issue|safe }}</td>
           <td>{{ entry.Serial_Number }}</td>
       </tr>
+      </tbody>
    </table></li>
   {% else %}
     <li><em>Unbelievable.  No entries here so far</em></li>
