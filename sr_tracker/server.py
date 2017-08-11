@@ -13,7 +13,9 @@ from flask import Flask, url_for, request, session, g, redirect, abort, \
     render_template, flash, Markup, send_from_directory, Response
 from sqlalchemy import create_engine
 from werkzeug.utils import secure_filename
-
+#########################################################################################
+#	Flask App Config                                    								#
+#########################################################################################
 app = Flask(__name__)
 # api = Api(app)
 app.debug = True
@@ -26,25 +28,25 @@ app.config.update(dict(
     USERNAME='admin',
     PASSWORD='default'
 ))
+app.config.from_envvar('sr_tracker_SETTINGS', silent=True)
 
+#########################################################################################
+#	File Handling Global Variables								                        #
+#########################################################################################
 UPLOAD_FOLDER = tempfile.gettempdir()
 ALLOWED_EXTENSIONS = {'csv'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-app.config.from_envvar('sr_tracker_SETTINGS', silent=True)
-
-# Connect to DB
-conn = sqlite3.connect('sr_tracker.db')
-db_connect = create_engine('sqlite:///sr_tracker.db')
-
-####Debug Printing
+#########################################################################################
+#   Debug Printing                                                                      #
+#########################################################################################
 # DEBUG_PRINT = 0
 DEBUG_PRINT = 1
 DEBUG = 1
 
 #########################################################################################
-#	Global Variables								#
+#	Global Variables								                                    #
 #########################################################################################
 post_string = str('insert into incidents (SR_NUMBER, SITE_NAME, SITE_ID, SEVERITY, ISSUE, SERIAL_NUMBER, CREATE_DATE) \
                 values (?, ?, ?, ?, ?, ?, ?)')
@@ -52,7 +54,7 @@ get_string = str('select ID_NUM, SR_NUMBER, SITE_NAME, SITE_ID, SEVERITY, ISSUE,
                     by SR_NUMBER')
 
 #########################################################################################
-#	MAIN										#
+#	MAIN										                                        #
 #########################################################################################
 # Purpose: Starts program
 
@@ -83,6 +85,14 @@ get_string = str('select ID_NUM, SR_NUMBER, SITE_NAME, SITE_ID, SEVERITY, ISSUE,
 # elsif($action eq "Report")  {report_panel();}
 # else			   { display_requests(); }
 ########****************OLD CODE*******REMOVE ME************************************#####
+
+#########################################################################################
+#   DB Functions
+#########################################################################################
+
+conn = sqlite3.connect('sr_tracker.db')
+db_connect = create_engine('sqlite:///sr_tracker.db')
+
 
 def connect_db():
     """Connects to the specific database."""
@@ -122,6 +132,10 @@ def close_db(error):
         g.sqlite_db.close()
 
 
+#########################################################################################
+#   Show Entries
+#########################################################################################
+
 @app.route('/')
 def show_entries():
     db = get_db()
@@ -132,6 +146,10 @@ def show_entries():
         flash(Markup(datetime.datetime.now().strftime("%d/%m/%Y %H:%M")))
     return render_template('show_entries.html', entries=entries)
 
+
+#########################################################################################
+#   Add Entries
+#########################################################################################
 
 @app.route('/add', methods=['POST'])
 def add_entry():
@@ -149,6 +167,10 @@ def add_entry():
     return redirect(url_for('show_entries'))
 
 
+#########################################################################################
+#   Login
+#########################################################################################
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
@@ -164,6 +186,10 @@ def login():
     return render_template('login.html', error=error)
 
 
+#########################################################################################
+#   Logout
+#########################################################################################
+
 @app.route('/logout')
 def logout():
     session.pop('logged_in', None)
@@ -171,16 +197,26 @@ def logout():
     return redirect(url_for('show_entries'))
 
 
+#########################################################################################
+#   File Handling Functions
+#########################################################################################
+
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+#************************
+# URL: /uploads/filename
+#************************
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'],
                                filename)
 
+#************************
+# URL: /uploads/
+#************************
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
@@ -196,26 +232,64 @@ def upload():
             return redirect(request.url)
         flash(Markup(filename))
 
-        fieldnames = ("Oracle Service Request #", "Site Name: Site Name", "Site Name: Site ID", "Severity",
-                      "Service Request Status", "Date/Time Opened", "Last Modified Date", "Next Customer Contact",
-                      "Product Name", "Product ID", "SW Version (Oracle)", "Problem Summary", "Case Owner: Full Name",
-                      "Contact Name: Full Name", "Site Name: SAM: Full Name")
-        reader = csv.DictReader(csvfile, fieldnames)
+        fieldnames = ('Oracle Service Request #', "Site Name: Site Name", "Site Name: Site ID", "Severity",
+                  "Service Request Status", "Date/Time Opened", "Last Modified Date", "Next Customer Contact",
+                  "Product Name", "Product ID", "SW Version (Oracle)", "Problem Summary", "Case Owner: Full Name",
+                  "Contact Name: Full Name", "Site Name: SAM: Full Name")
+        
+        #figure out row count for creating objects
+        reader = csv.DictReader((line.replace('\0','') for line in csvfile), fieldnames)
+        size=len(list(reader))
+        #reset the file reader back to begining of file
+        csvfile.seek(0, 0)
+        reader = csv.DictReader((line.replace('\0','') for line in csvfile), fieldnames)
+        
+        if DEBUG_PRINT: print("Number of rows is " + str(size))
 
-        output = []
+        #Initialize a list of objects for each row in the file
+        instancelist = [SReq(fieldnames) for r in range(size)]
 
-        def generator():
-            for each in reader:
-                row = {}
-                for field in fieldnames:
-                    row[field] = each[field]
-                output.append(row)
-            yield json.dumps(output)
+        #Process the rows and set the object attributes
+        i = 0
+        skip = 0
+        if reader:
+            for row in reader:
+                if DEBUG_PRINT: print("loading row: " + str(row))
+                for field, value in row.items():
+                    if DEBUG_PRINT: print("loading field: object number " + str(i) + " " +  field + ":" + value)
+                    if field == value:
+                        skip = 1
+                        continue
+                    setattr(instancelist[i],str(field),str(value))
+                if skip == 1:
+                    skip = 0
+                    continue
+                i += 1
 
-        return Response(generator(),
-                        mimetype="text/plain",
-                        headers={"Content-Disposition":
-                                     "attachment;filename=file.json"})
+        #Print out our data to see if it worked
+        if DEBUG_PRINT: 
+            print("Finished loading object")
+            for each in instancelist:
+                each.print_vals()
+
+
+            # output = []
+            #
+            # def generator():
+            #     for each in reader:
+            #         row = {}
+            #         for field in sr.__dict__:
+            #             row[field] = each[field]
+            #         output.append(row)
+            #    yield json.dumps(output)
+
+            #return Response(generator(),
+            #                 mimetype="text/plain",
+            #                 headers={"Content-Disposition":
+            #                              "attachment;filename=file.json"})
+
+
+
 
     return '''
        <!doctype html>
@@ -226,3 +300,61 @@ def upload():
             <input type=submit value=Upload>
        </form>
        '''
+
+
+#########################################################################################
+#   Class: SReq
+#########################################################################################
+
+class SReq:
+# sr_num, site_name, site_id, sev, status, create_date, modified_date, next_contact, product_name,
+#                 serial_num, issue, case_owner, contact_name
+
+    def __init__(self,fieldnames):
+        #initialize attributes dynamically
+        for field in fieldnames:
+            setattr(self,field,"")
+
+        self.description = "This is an object representing the data a SAM needs to know about a Service Request"
+        self.author = "James Anderton (james.anderton@dell.com)"
+
+    def describe(self, text):
+        self.description = text
+
+    def author(self, text):
+        self.author = text
+
+    def print_vals(self):
+        for key, value in self.__dict__.items():
+            print(str(key) + ":" + str(value))
+
+        print("\n")
+
+    def email(self):
+        pass
+
+    def create_url(self):
+        pass
+
+    def output_json_obj(self):
+        obj = json.JSONEncoder(self.__dict__)
+        return obj
+
+    def output_json_file(self):
+        output = []
+
+        def generator():
+            for each in self.__dict__:
+                row = {}
+                for field in self.__dict__.items():
+                    row[field] = each[field]
+                output.append(row)
+            yield json.dumps(output)
+
+        return Response(generator(),
+                        mimetype="text/plain",
+                        headers={"Content-Disposition":
+                                     "attachment;filename=file.json"})
+
+    def output_csv_file(self):
+        pass
